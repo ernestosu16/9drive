@@ -192,6 +192,7 @@ connectedAccountRouter.get('/google/callback', async (req, res, next) => {
 
     if (oauthState.flow === 'login') {
       const name = profile.data.name || email.split('@')[0] || 'Google User'
+      if (!env.ALLOW_REGISTRATION && !(await prisma.user.findUnique({ where: { email } }))) return res.redirect(`${env.FRONTEND_URL}/google-auth?status=error`)
       const user = await prisma.user.upsert({
         where: { email },
         create: { email, name, passwordHash: await hashPassword(randomToken(32)) },
