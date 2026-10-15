@@ -269,12 +269,12 @@ Developer contact email
 4. Add scopes:
 
 ```txt
-https://www.googleapis.com/auth/drive
+https://www.googleapis.com/auth/drive.file
 https://www.googleapis.com/auth/userinfo.email
 https://www.googleapis.com/auth/userinfo.profile
 ```
 
-Full Drive access is required so Google sign-in can connect the first Drive account automatically and sync files manually added to the `9drive` folder.
+`drive.file` is a non-sensitive scope, so it does not require Google verification. It only grants access to files and folders created by this app. Files added manually to the `9drive` folder from outside the app are not visible to `POST /files/sync-google`. Existing connected accounts must reconnect to receive the new scope.
 
 5. If publishing status is `Testing`, add test users.
 
