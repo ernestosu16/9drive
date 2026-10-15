@@ -462,6 +462,56 @@ Cuando cambies `VITE_API_URL`, reconstruye el frontend con `docker compose --pro
 - Usa secretos largos y aleatorios en `JWT_ACCESS_SECRET` y `TOKEN_ENCRYPTION_KEY`.
 - Si no usas el perfil `https`, pon tu propio proxy HTTPS delante de 5173 y 4000.
 
+## Despliegue en Dokploy
+
+Usa [docker-compose.dokploy.yml](docker-compose.dokploy.yml). Dokploy pone HTTPS y dominios con Traefik, así que ese archivo no publica puertos ni incluye Caddy.
+
+### 1. Crear el servicio
+
+1. En Dokploy, crea un proyecto y un servicio de tipo **Compose**.
+2. Fuente: repositorio Git de este proyecto, rama `main`.
+3. Compose path: `docker-compose.dokploy.yml`.
+
+### 2. Variables de entorno
+
+Pestaña **Environment**. Usa la plantilla de [.env.docker.example](.env.docker.example) y define como mínimo:
+
+```env
+MYSQL_ROOT_PASSWORD=...
+MYSQL_PASSWORD=...
+JWT_ACCESS_SECRET=...
+TOKEN_ENCRYPTION_KEY=...           # al menos 32 caracteres
+FRONTEND_URL=https://9drive.tudominio.com
+VITE_API_URL=https://api.9drive.tudominio.com
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=https://api.9drive.tudominio.com/connected-accounts/google/callback
+```
+
+`VITE_API_URL` se embebe al compilar. Si la cambias, vuelve a desplegar con rebuild.
+
+### 3. Dominios
+
+Pestaña **Domains**, dos entradas con HTTPS activado:
+
+| Servicio | Host | Puerto |
+|---|---|---|
+| `frontend` | `9drive.tudominio.com` | `80` |
+| `backend` | `api.9drive.tudominio.com` | `4000` |
+
+Antes, apunta los dos registros DNS a la IP del servidor.
+
+### 4. Google Cloud Console
+
+En el cliente OAuth Web:
+
+- Authorized JavaScript origins: `https://9drive.tudominio.com`
+- Authorized redirect URIs: `https://api.9drive.tudominio.com/connected-accounts/google/callback`
+
+### 5. Desplegar
+
+Pulsa **Deploy**. Las migraciones y el seed de Google corren solos al arrancar el backend. Para revisar, mira los logs del servicio `backend`.
+
 ### Non-Docker Production Startup
 
 Run production migrations before starting the backend:
