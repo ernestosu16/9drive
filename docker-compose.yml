@@ -28,9 +28,9 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-this-jwt-secret-at-least-32-chars}
       TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-change-this-encryption-key-32bytes!}
-      ACCESS_TOKEN_TTL_SECONDS: ${ACCESS_TOKEN_TTL_SECONDS:-3600}
+      ACCESS_TOKEN_TTL_SECONDS: ${ACCESS_TOKEN_TTL_SECONDS:-900}
       REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
-      MAX_UPLOAD_BYTES: 5368709120
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-5368709120}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:4000/connected-accounts/google/callback}
@@ -49,5 +49,28 @@ services:
     ports:
       - "5173:80"
 
+  # Opcional: HTTPS automatico con Caddy. Activar con:
+  #   docker compose --profile https up -d --build
+  # Requiere FRONTEND_DOMAIN y API_DOMAIN apuntando a la IP del servidor.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      FRONTEND_DOMAIN: ${FRONTEND_DOMAIN:-}
+      API_DOMAIN: ${API_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
 volumes:
   mysql_data:
+  caddy_data:
+  caddy_config:

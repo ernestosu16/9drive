@@ -380,169 +380,87 @@ http://localhost:5173
 
 ## Docker Deployment
 
-This repository includes Docker files for running MySQL, backend, and frontend together.
+Docker levanta MySQL, backend y frontend. Las migraciones y el seed de Google corren solos al arrancar el backend.
 
-Files:
-
-```txt
-docker-compose.yml
-.env.docker.example
-backend/Dockerfile
-frontend/Dockerfile
-frontend/nginx.conf
-```
-
-### 1. Prepare Docker Env
-
-Copy the example env file:
+### 1. Configurar `.env`
 
 ```bash
 cp .env.docker.example .env
 ```
 
-On Windows PowerShell:
+En Windows PowerShell:
 
 ```powershell
 Copy-Item .env.docker.example .env
 ```
 
-Edit `.env`:
+Cambia como mínimo:
 
-```env
-MYSQL_ROOT_PASSWORD=root
-MYSQL_DATABASE=9drive
+- `MYSQL_ROOT_PASSWORD`, `MYSQL_PASSWORD`
+- `JWT_ACCESS_SECRET`, `TOKEN_ENCRYPTION_KEY` (la clave de cifrado debe tener al menos 32 caracteres)
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 
-FRONTEND_URL=http://localhost:5173
-VITE_API_URL=http://localhost:4000
-VITE_RECAPTCHA_SITE_KEY=
+Captcha queda desactivado si `VITE_RECAPTCHA_SITE_KEY` o `RECAPTCHA_SECRET_KEY` están vacíos.
 
-JWT_ACCESS_SECRET=replace-with-long-random-secret
-TOKEN_ENCRYPTION_KEY=replace-with-long-random-secret
-RECAPTCHA_SECRET_KEY=
-
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:4000/connected-accounts/google/callback
-```
-
-Captcha is disabled when either `VITE_RECAPTCHA_SITE_KEY` or `RECAPTCHA_SECRET_KEY` is empty.
-
-### 2. Start Containers
+### 2. Levantar
 
 ```bash
 docker compose up -d --build
 ```
 
-Services:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:4000
 
-```txt
-frontend: http://localhost:5173
-backend:  http://localhost:4000
-mysql:    localhost:3306
-```
+Si cambias `VITE_API_URL` o `VITE_RECAPTCHA_SITE_KEY`, reconstruye con el mismo comando. Vite los embebe al compilar.
 
-The backend container runs Prisma migrations automatically on startup:
-
-```txt
-npm run db:migrate:deploy
-```
-
-This applies pending migrations such as S3 storage support before the API starts, so deployments from an older database can update safely without dropping data.
-
-It also seeds the global Google OAuth config automatically when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set to real values in `.env`. If those values are blank or still placeholders, the backend still starts and logs a warning. Google connect/sign-in will be unavailable until you set real Google OAuth credentials and restart the stack:
-
-```bash
-docker compose up -d --build
-```
-
-### 3. Seed Google OAuth Config Manually
-
-Automatic Docker startup seeding is usually enough. If you update Google OAuth values while containers are already running, seed the global Google OAuth config manually:
-
-```bash
-docker compose exec backend npm run seed:google-config
-```
-
-This stores `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` from Docker env into MySQL as encrypted global config.
-
-### 4. View Logs
+### 3. Logs y parada
 
 ```bash
 docker compose logs -f backend
-docker compose logs -f frontend
-docker compose logs -f mysql
-```
-
-### 5. Stop Containers
-
-```bash
 docker compose down
 ```
 
-Remove database volume too:
+`docker compose down -v` también borra la base de datos.
 
-```bash
-docker compose down -v
-```
+### 4. Actualizar credenciales de Google
 
-### Docker Production Notes
+Si cambias `GOOGLE_CLIENT_ID` o `GOOGLE_CLIENT_SECRET` con los contenedores ya corriendo:
 
-- Replace localhost URLs with production domain.
-- Update Google OAuth authorized JavaScript origin.
-- Update Google OAuth redirect URI.
-- Use strong `JWT_ACCESS_SECRET` and `TOKEN_ENCRYPTION_KEY`.
-- Do not expose MySQL port publicly in production.
-- Put frontend/backend behind HTTPS reverse proxy.
-- Rebuild frontend when `VITE_API_URL` changes because Vite embeds env at build time.
-- Rebuild frontend when `VITE_RECAPTCHA_SITE_KEY` changes because Vite embeds env at build time.
-
-### VPS Deployment (Step-by-Step)
-
-Follow these steps to deploy 9Drive to a VPS (such as Ubuntu/Debian) using Docker:
-
-#### 1. Install Docker & Docker Compose on your VPS
-```bash
-sudo apt update
-sudo apt install -y docker.io docker-compose
-sudo systemctl enable --now docker
-```
-
-#### 2. Clone the Repository
-```bash
-git clone https://github.com/your-github-username/9drive.git
-cd 9drive
-```
-
-#### 3. Setup the Production Environment
-Copy the example environment file to `.env`:
-```bash
-cp .env.docker.example .env
-```
-Edit the `.env` file (e.g., `nano .env`) and configure the values for your production VPS domain/IP:
-* **`FRONTEND_URL`**: Set to your public domain or VPS IP (e.g., `http://103.xxx.xxx.xxx:5173` or `https://9drive.yourdomain.com`).
-* **`VITE_API_URL`**: Set to your public backend URL (e.g., `http://103.xxx.xxx.xxx:4000` or `https://api.9drive.yourdomain.com`).
-* **`GOOGLE_REDIRECT_URI`**: Set to your public redirect callback URL (e.g., `http://103.xxx.xxx.xxx:4000/connected-accounts/google/callback`).
-* Set secure credentials for **`JWT_ACCESS_SECRET`** and **`TOKEN_ENCRYPTION_KEY`** (encryption key must be exactly 32 characters/bytes).
-* Add your **`GOOGLE_CLIENT_ID`** and **`GOOGLE_CLIENT_SECRET`**.
-
-#### 4. Deploy the Containers
-Run Docker Compose to build and start the database, backend, and frontend containers in the background:
 ```bash
 docker compose up -d --build
-```
-
-#### 5. Seed the Google Configuration
-Initialize the encrypted Google configuration in the database:
-```bash
 docker compose exec backend npm run seed:google-config
 ```
 
-#### 6. Add Authorized URIs in Google Cloud Console
-1. Go to **APIs & Services** -> **Credentials** in the Google Cloud Console.
-2. Edit your OAuth 2.0 Web Client.
-3. In **Authorized JavaScript origins**, add your frontend URL (e.g., `http://your-vps-ip:5173` or `https://9drive.yourdomain.com`).
-4. In **Authorized redirect URIs**, add your redirect URI (e.g., `http://your-vps-ip:4000/connected-accounts/google/callback` or `https://api.9drive.yourdomain.com/connected-accounts/google/callback`).
-5. Save changes.
+### 5. HTTPS en un VPS (opcional)
+
+1. Apunta dos dominios (o subdominios) a la IP del servidor, por ejemplo `9drive.tudominio.com` y `api.9drive.tudominio.com`.
+2. En `.env`:
+
+   ```env
+   FRONTEND_DOMAIN=9drive.tudominio.com
+   API_DOMAIN=api.9drive.tudominio.com
+   FRONTEND_URL=https://9drive.tudominio.com
+   VITE_API_URL=https://api.9drive.tudominio.com
+   GOOGLE_REDIRECT_URI=https://api.9drive.tudominio.com/connected-accounts/google/callback
+   ```
+
+3. Levanta con el perfil `https`. Caddy obtiene los certificados solo:
+
+   ```bash
+   docker compose --profile https up -d --build
+   ```
+
+4. En Google Cloud Console, en el cliente OAuth Web:
+   - Authorized JavaScript origins: `https://9drive.tudominio.com`
+   - Authorized redirect URIs: `https://api.9drive.tudominio.com/connected-accounts/google/callback`
+
+Cuando cambies `VITE_API_URL`, reconstruye el frontend con `docker compose --profile https up -d --build`.
+
+### Notas de producción
+
+- No expongas el puerto de MySQL (el compose no lo publica).
+- Usa secretos largos y aleatorios en `JWT_ACCESS_SECRET` y `TOKEN_ENCRYPTION_KEY`.
+- Si no usas el perfil `https`, pon tu propio proxy HTTPS delante de 5173 y 4000.
 
 ### Non-Docker Production Startup
 
