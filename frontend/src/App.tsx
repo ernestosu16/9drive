@@ -17,6 +17,7 @@ import { ApiManagementPage } from '@/pages/ApiManagementPage'
 import { TrashPage } from '@/pages/TrashPage'
 import { ActivityLogPage } from '@/pages/ActivityLogPage'
 import { UploadProvider } from '@/context/UploadContext'
+import { allowRegistration } from '@/lib/features'
 
 
 function App() {
@@ -24,7 +25,7 @@ function App() {
     <UploadProvider>
       <Routes>
       <Route path="login" element={<LoginPage />} />
-      <Route path="register" element={<RegisterPage />} />
+      <Route path="register" element={allowRegistration ? <RegisterPage /> : <Navigate to="/login" replace />} />
       <Route path="google-auth" element={<GoogleAuthPage />} />
       <Route path="google-connected" element={<GoogleConnectedPage />} />
       <Route path="public/files/:token" element={<PublicFilePage />} />

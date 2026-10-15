@@ -38,6 +38,7 @@ services:
       REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-5368709120}
       RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:?Define GOOGLE_REDIRECT_URI, p. ej. https://api.9drive.tudominio.com/connected-accounts/google/callback}
@@ -50,6 +51,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:?Define VITE_API_URL, p. ej. https://api.9drive.tudominio.com}
         VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY:-}
+        VITE_ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
     restart: unless-stopped
     depends_on:
       - backend

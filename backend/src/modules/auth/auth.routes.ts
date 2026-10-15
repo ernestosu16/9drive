@@ -42,6 +42,7 @@ async function verifyCaptcha(token: string | undefined) {
 
 authRouter.post('/register', async (req, res, next) => {
   try {
+    if (!env.ALLOW_REGISTRATION) return res.status(403).json({ code: 'REGISTRATION_DISABLED', message: 'Registration is disabled.' })
     const body = registerSchema.parse(req.body)
     if (!(await verifyCaptcha(body.captchaToken))) return res.status(400).json({ code: 'CAPTCHA_FAILED', message: 'Captcha verification failed.' })
     const existing = await prisma.user.findUnique({ where: { email: body.email } })
@@ -104,6 +105,7 @@ authRouter.get('/google/callback', async (req, res) => {
     if (!providerAccountId || !email) return res.redirect(`${env.FRONTEND_URL}/google-auth?status=error`)
 
     const name = profile.data.name || email.split('@')[0] || 'Google User'
+    if (!env.ALLOW_REGISTRATION && !(await prisma.user.findUnique({ where: { email } }))) return res.redirect(`${env.FRONTEND_URL}/google-auth?status=error`)
     const user = await prisma.user.upsert({
       where: { email },
       create: { email, name, passwordHash: await hashPassword(randomToken(32)) },
